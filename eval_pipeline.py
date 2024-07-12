@@ -21,6 +21,7 @@ def main(
     output_dir=f"./out",
     cache_dir=f"/dpc/kunf0097/l3-8b",
     eval_data_path="./data/1/eval_medical_2k.json",
+    eval_split="train",
     log_file=None,
     candidate_name="meta-llama/Meta-Llama-3-8B-Instruct",
     evaluator_name="meta-llama/Meta-Llama-3-8B-Instruct",
@@ -37,6 +38,7 @@ def main(
     output_dir (str): Directory to save output. Default is './out'.
     cache_dir (str): Directory to load/save tokenizer/model. Default is '/dpc/kunf0097/l3-8b'.
     eval_data_path (str): Path to the evaluation data. Default is './data/1/eval_medical_2k.json'.
+    eval_split (str): The HF dataset split. Default is 'train'
     log_file (str): File to dump the outputs of the evaluator. Default is {output_dir}/results_{name.split('/')[1]}_{run_id}.json.
     candidate_name (str): Model name for evaluation. Default is 'meta-llama/Meta-Llama-3-8B-Instruct'.
     evaluator_name (str): Model name for the evaluator. Default is 'meta-llama/Meta-Llama-3-8B-Instruct'.
@@ -78,7 +80,7 @@ def main(
     )
 
     data = load_dataset("json", data_files=eval_data_path)
-    eval_dataset = data["train"].map(
+    eval_dataset = data[eval_split].map(
         lambda x: generate_and_tokenize_prompt(x, candidate_tokenizer, candidate_prompt)
     )  # not shuffled
 

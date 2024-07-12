@@ -15,4 +15,5 @@ module load miniconda/3
 conda activate torch20
 echo "Finally - out of queue" 
 # python eval_pipeline.py --name=microsoft/Phi-3-mini-4k-instruct
-python eval_pipeline.py --evaluator_name=Qwen/Qwen2-7B-Instruct
+# python eval_pipeline.py --evaluator_name=Qwen/Qwen2-7B-Instruct
+python eval_generate.py --base_url=https://74b3-109-205-28-10.ngrok-free.app/v1

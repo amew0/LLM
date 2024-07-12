@@ -16,15 +16,6 @@ from peft import LoraConfig, PeftModel
 from datasets import load_dataset
 from time import time
 
-cudas = os.getenv("CUDA_VISIBLE_DEVICES")
-if cudas:
-    gpus = [torch.device(f"cuda:{i}") for i in range(torch.cuda.device_count())]
-else:
-    gpus = [torch.device("cuda")]
-
-gpu0, gpu1 = gpus[0], None
-if len(gpus) > 1:
-    gpu1 = gpus[1]
 
 start = time()
 
@@ -39,7 +30,6 @@ huggingface_hub.login(token=HF_TOKEN_WRITE)
 
 
 torch.cuda.empty_cache()
-torch.cuda.memory_summary(device=None, abbreviated=False)
 
 # Set model and tokenizer paths
 ME = "/dpc/kunf0097/l3-8b"

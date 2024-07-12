@@ -1,4 +1,3 @@
-
 import re
 import json
 import yaml
@@ -85,6 +84,10 @@ def extract_score(text):
     match = re.search(r"\b\d+(\.\d+)?\b", text)
     return float(match.group(0)) if match else -1.0
 
+def extract_digit(text):
+    match = re.search(r"\d+", text)
+    return int(match.group(0)) if match else None
+
 
 def log2json(results, json_result):
     with open(json_result, "w") as f:
@@ -107,4 +110,4 @@ def generate_response(model, tokenizer, input_ids, attention_mask, generation_co
             print(f"Skipping example due to invalid output: {e}")
             return None
         else:
-            raise 
+            raise
