@@ -1,0 +1,32 @@
+Finally - out of queue
+------------------------ eval_pipeline.py ---------------------------
+------------------------  ---------------------------
+	output_dir: ./out
+	cache_dir: /dpc/kunf0097/l3-8b
+	eval_data_path: ./data/eval_medical_2k.json
+	eval_split: train
+	log_file: ./out/results_Meta-Llama-3-8B-Instruct_240712101247.json
+	candidate_name: meta-llama/Meta-Llama-3-8B-Instruct
+	evaluator_name: meta-llama/Meta-Llama-3-8B-Instruct
+	run_id: 240712101247
+	log2wandb: True
+	project: huggingface
+	entity: my-ku-org
+	evals_per_example: 2
+------------------------  ---------------------------
+candidate_prompt:  <|start_header_id|>system<|end_header_id|> {}<|eot_id|><|start_header_id|>user<|end_header_id|> {}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+evaluator_prompt:  <|start_header_id|>system<|end_header_id|>
+[YOUR OUTPUT IS NOTHING ELSE BUT A SCORE FROM 0.0 - 5.0] You will be given one response of a medical chatbot and the expected response.\n\nYour task is to rate the answer of the medical chatbot on one metric.\n\nPlease make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.\n\nEvaluation Criteria:\n\nMedical Accuracy (0.0 - 5.0) evaluates the precision and reliability of responses in diagnosing and treating medical conditions. Key criteria include:\n\n1) Diagnostic Precision: Responses should accurately interpret symptoms and provide correct diagnostic information based on current medical knowledge.\n\n2) Treatment Consistency: Information should align with recommended treatment protocols supported by robust evidence from clinical trials and expert consensus.\n\n3) Clinical Relevance: Responses should consider variations in disease presentation, patient demographics, and comorbidities to ensure relevance to clinical practice.\n\n4) Clarity and Completeness: All medical explanations and recommendations should be clear, comprehensive, and free from ambiguity or oversimplification.\n\n5) Consistency with Medical Standards: Responses should align with established medical standards and practices, avoiding contradictory or speculative claims.\n\n6) Updated Content: Regular updates should reflect advancements in medical research and changes in treatment standards to maintain current relevance.\n\n7) Safety and Ethical Guidelines: Recommendations for medical interventions should prioritize patient safety and adhere to ethical guidelines and legal standards.\n\n\nEvaluation Steps:\n\n1) Read the expected medical accuracy criteria carefully and understand the key components: diagnostic precision, treatment consistency, clinical relevance, clarity and completeness, consistency with medical standards, updated content, and adherence to safety and ethical guidelines.\n\n2) Evaluate the medical chatbot response by comparing it against the expected criteria. Determine if the response accurately interprets symptoms and provides correct diagnostic \ninformation, adheres to recommended treatment protocols with evidence-based support, considers variations in disease presentation and patient demographics, and maintains clarity and completeness in explanations.\n\n3) Assign a score for Medical Chatbot response on a scale of 0.0 to 5.0 based on the evaluation criteria (Medical Accuracy)\n\nScoring:\nAssign a score for Medical Accuracy on a scale of 0.0 to 5.0 based on the evaluation:\n\n5.0: The response consistently demonstrates precise diagnoses and evidence-based treatment recommendations, and meets all criteria with exceptional accuracy and reliability.\n\n4.0-4.9: Minor inaccuracies or occasional gaps may be present, but overall, the response aligns well with the majority of the criteria.\n\n3.0-3.9: Some inconsistencies or significant gaps in information may require clarification or improvement to enhance accuracy and reliability.\n\n2.0-2.9: Major inaccuracies or substantial gaps significantly impact reliability and may require substantial revision.\n\n0.0-1.9: The response is consistently inaccurate or lacks essential information, failing to meet the expected criteria for reliability and accuracy.\n\n\nExample:\n\nExpected Medical Chatbot Response: [Chatbot response] \n\nGenerated Medical Chatbot Response: [Chatbot response]\n\nEvaluation Form  only add the final score without any explanation or any additional words :\n\n- Medical Accuracy: \n
+<|start_header_id|>user<|end_header_id|>
+Expected Medical Chatbot Response: {}
+Generated Medical Chatbot Response: {}
+- Medical Accuracy: x.x<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>
+
+candidate_generation_config:  {'max_new_tokens': 256, 'do_sample': True, 'temperature': 0.6, 'top_p': 0.9}
+evaluator_generation_config:  {'max_new_tokens': 256, 'do_sample': True, 'temperature': 0.6, 'top_p': 0.9}
+The token has not been saved to the git credentials helper. Pass `add_to_git_credential=True` in this function directly or `--add-to-git-credential` if using via `huggingface-cli` if you want to set the git credential as well.
+Token is valid (permission: write).
+Your token has been saved to /home/kunet.ae/ku5001069/.cache/huggingface/token
+Login successful
+------------------------ 240712101247 ---------------------------

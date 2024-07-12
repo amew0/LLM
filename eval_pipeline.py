@@ -20,7 +20,7 @@ logg = lambda x: print(f"------------------------ {x} --------------------------
 def main(
     output_dir=f"./out",
     cache_dir=f"/dpc/kunf0097/l3-8b",
-    eval_data_path="./data/1/eval_medical_2k.json",
+    eval_data_path="./data/eval_medical_2k.json",
     eval_split="train",
     log_file=None,
     candidate_name="meta-llama/Meta-Llama-3-8B-Instruct",
@@ -106,9 +106,9 @@ def main(
         if response is None:
             continue
 
-        gt_response = example["output"]  # groundtruth
+        gt_response = str(example["output"])  # groundtruth
         eval_prompt_tokenized = eval_prompt_tokenizer(
-            response, gt_response, evaluator_tokenizer, prompt=evaluator_prompt
+            gt_response, response, evaluator_tokenizer, prompt=evaluator_prompt
         )
 
         llm_scores = []

@@ -5,9 +5,11 @@ import torch
 import inspect
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from typing import Union
 
 
-logg = lambda x: print(f"------------------------ {x} ---------------------------")
+def logg(x):
+    print(f"------------------------ {x} ---------------------------")
 
 def inspectt(frame):
     logg("")
@@ -74,8 +76,8 @@ def generate_and_tokenize_prompt(data_point, tokenizer, prompt=None):
     return tokenized_full_prompt
 
 
-def eval_prompt_tokenizer(generated, output, eval_tokenizer, prompt=None):
-    prompt = prompt.format(generated, output)
+def eval_prompt_tokenizer(output: str, generated: str, eval_tokenizer, prompt: str = None):
+    prompt = prompt.format(output, generated)
     tokenized_full_prompt = tokenize(prompt, tokenizer=eval_tokenizer)
     return tokenized_full_prompt
 
@@ -83,6 +85,7 @@ def eval_prompt_tokenizer(generated, output, eval_tokenizer, prompt=None):
 def extract_score(text):
     match = re.search(r"\b\d+(\.\d+)?\b", text)
     return float(match.group(0)) if match else -1.0
+
 
 def extract_digit(text):
     match = re.search(r"\d+", text)
@@ -94,7 +97,9 @@ def log2json(results, json_result):
         json.dump(results, f, ensure_ascii=False, indent=4)
 
 
-def generate_response(model, tokenizer, input_ids, attention_mask, generation_config):
+def generate_response(
+    model, tokenizer, input_ids, attention_mask, generation_config
+) -> Union[str, None]:
     try:
         output = model.generate(
             input_ids=torch.LongTensor(input_ids).to(model.device),
