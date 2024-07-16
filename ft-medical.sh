@@ -13,4 +13,4 @@
 module load miniconda/3
 conda activate torch20
 echo "Finally - out of queue" 
-python ft.py
+python ft.py --run-id=240714045919

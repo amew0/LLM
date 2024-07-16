@@ -81,7 +81,7 @@ def main(
 
     data = load_dataset("json", data_files=eval_data_path)
     eval_dataset = data[eval_split].map(
-        lambda x: generate_and_tokenize_prompt(x, candidate_tokenizer, candidate_prompt)
+        lambda x: eval_generate_and_tokenize_prompt(x, candidate_tokenizer, candidate_prompt)
     )  # not shuffled
 
     if log2wandb:

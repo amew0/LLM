@@ -65,20 +65,20 @@ def get_tokenizer_and_model(model_name: str, cache_dir: str):
     return tokenizer, model
 
 
-def tokenize(prompt, tokenizer):
+def eval_tokenize(prompt, tokenizer):
     tokenized = tokenizer(prompt, return_tensors="pt")
     return tokenized
 
 
-def generate_and_tokenize_prompt(data_point, tokenizer, prompt=None):
+def eval_generate_and_tokenize_prompt(data_point, tokenizer, prompt=None):
     prompt = prompt.format(data_point["instruction"], data_point["input"])
-    tokenized_full_prompt = tokenize(prompt, tokenizer=tokenizer)
+    tokenized_full_prompt = eval_tokenize(prompt, tokenizer=tokenizer)
     return tokenized_full_prompt
 
 
 def eval_prompt_tokenizer(output: str, generated: str, eval_tokenizer, prompt: str = None):
     prompt = prompt.format(output, generated)
-    tokenized_full_prompt = tokenize(prompt, tokenizer=eval_tokenizer)
+    tokenized_full_prompt = eval_tokenize(prompt, tokenizer=eval_tokenizer)
     return tokenized_full_prompt
 
 

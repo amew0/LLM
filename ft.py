@@ -23,12 +23,16 @@ from trl import SFTTrainer, SFTConfig
 from peft import LoraConfig, PeftModel
 from utils.eval_helper import inspectt, logg
 from utils.ft_helper import (
-    PrintExampleCallback,
-    SFTTrainerNoShuffle,
     generate_and_tokenize_prompt,
     reorder_dataset,
 )
 from torch.utils.data import DataLoader, SequentialSampler
+
+import coloredlogs
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
 wandb.require("core")
@@ -75,6 +79,8 @@ def main(
         )
 
     inspectt(inspect.currentframe())
+    logger = logging.getLogger(__name__)
+    coloredlogs.install(level="DEBUG", logger=logger)
 
     start = time()
     load_dotenv()
@@ -145,13 +151,22 @@ def main(
         resume_from_checkpoint=last_checkpoint,
     )
 
+    class SFTTrainerNoShuffle(SFTTrainer):
+        def training_step(self, model, inputs):
+            if (self.state.global_step % self.args.save_steps) == 0:
+                inputs_decoded = tokenizer.decode(inputs["input_ids"][0])
+                logger.info(f"{self.state.global_step}: {inputs_decoded}")
+            return super().training_step(model, inputs)
+
+        def _get_train_sampler(self):
+            return SequentialSampler(self.train_dataset)  # to prevent shuffling
+
     trainer = SFTTrainerNoShuffle(
         model=model,
         tokenizer=tokenizer,
         peft_config=peft_config,
         train_dataset=train_dataset,
         args=train_args,
-        # callbacks=[PrintExampleCallback()],
     )
 
     # Train model
