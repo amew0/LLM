@@ -24,13 +24,42 @@ def tokenize(prompt, tokenizer, cutoff_len: int = None):
     return result
 
 
-def generate_and_tokenize_prompt(data_point, tokenizer, cutoff_len: int = None):
+def generate_and_tokenize_prompt(
+    data_point, tokenizer, cutoff_len: int = None, prompt_template: str = None
+):
+    train_on_input = False
     if cutoff_len is None:
-        tokenized_full_prompt = tokenize(data_point["prompt"], tokenizer=tokenizer)
+        tokenized_full_prompt = tokenize(
+            prompt_template.format(
+                data_point["instruction"], data_point["input"], data_point["output"]
+            ),
+            tokenizer=tokenizer,
+        )
     else:
         tokenized_full_prompt = tokenize(
-            data_point["prompt"], tokenizer=tokenizer, cutoff_len=cutoff_len
+            prompt_template.format(
+                data_point["instruction"], data_point["input"], data_point["output"]
+            ),
+            tokenizer=tokenizer,
+            cutoff_len=cutoff_len,
         )
+        if not train_on_input:
+            prompt_template = prompt_template.split(
+                "<|start_header_id|>assistant<|end_header_id|>"
+            )[0]
+            tokenized_user_prompt = tokenize(
+                prompt_template.format(data_point["instruction"], data_point["input"]),
+                tokenizer=tokenizer,
+            )
+            user_prompt_len = len(tokenized_user_prompt["input_ids"])
+            labels_prefix = torch.full((user_prompt_len,), -100)
+            tokenized_full_prompt["labels"] = torch.cat(
+                (
+                    labels_prefix,
+                    torch.tensor(tokenized_full_prompt["labels"][user_prompt_len:]),
+                )
+            )
+
     return tokenized_full_prompt
 
 
@@ -42,6 +71,7 @@ def reorder_dataset(dataset, start_index):
     # Concatenate the two parts to get the reordered dataset
     reordered_dataset = concatenate_datasets([dataset_part1, dataset_part2])
     return reordered_dataset
+
 
 # prints appropriately on console but not to file (.out) trying logger
 class PrintExampleCallback(TrainerCallback):

@@ -3,6 +3,7 @@ import inspect
 import os
 from datetime import datetime
 from time import time
+import yaml
 
 import fire
 import huggingface_hub
@@ -49,6 +50,7 @@ def main(
     last_checkpoint=None,
     per_device_train_batch_size=2,
     gradient_accumulation_steps=1,
+    prompt_template=None
 ):
     """
     Finetuning.
@@ -77,6 +79,12 @@ def main(
             * per_device_train_batch_size
             * gradient_accumulation_steps
         )
+
+    if prompt_template is None:
+        with open("tuning.yaml", "r") as f:
+            tuning_config = yaml.safe_load(f)
+            prompt_template = tuning_config[model_name]["prompt_template"]
+
 
     inspectt(inspect.currentframe())
     logger = logging.getLogger(__name__)
@@ -128,7 +136,7 @@ def main(
     data = load_dataset("meher146/medical_llama3_instruct_dataset", split="train")
     if start_index != 0:
         data = reorder_dataset(data, start_index)
-    train_dataset = data.map(lambda x: generate_and_tokenize_prompt(x, tokenizer, cutoff_len))
+    train_dataset = data.map(lambda x: generate_and_tokenize_prompt(x, tokenizer, cutoff_len, prompt_template))
 
     # load it from .yaml
     train_args = SFTConfig(
