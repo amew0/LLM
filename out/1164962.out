@@ -1,0 +1,52 @@
+Finally - out of queue
+Thu Jul 18 16:48:33 2024       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 515.105.01   Driver Version: 515.105.01   CUDA Version: 11.7     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  Tesla V100-PCIE...  Off  | 00000000:3B:00.0 Off |                    0 |
+| N/A   50C    P0    39W / 250W |   9749MiB / 32768MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+|   1  Tesla V100-PCIE...  Off  | 00000000:86:00.0 Off |                    0 |
+| N/A   49C    P0    42W / 250W |  18923MiB / 32768MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|    0   N/A  N/A   2050255      C   ...a/envs/torch20/bin/python     9745MiB |
+|    1   N/A  N/A   2050255      C   ...a/envs/torch20/bin/python    18919MiB |
++-----------------------------------------------------------------------------+
+------------------------ ft-medical.py ---------------------------
+------------------------  ---------------------------
+	output_dir: ./out
+	cache_dir: /dpc/kunf0097/l3-8b
+	train_data_path: ./data/medical.json
+	model_name: meta-llama/Meta-Llama-3-8B-Instruct
+	model_save_path: /dpc/kunf0097/l3-8b/model/meta-llama/Meta-Llama-3-8B-Instruct-v240718164838
+	run_id: 240718164838
+	chpt_dir: /dpc/kunf0097/l3-8b/chpt/240718164838
+	last_checkpoint: None
+	per_device_train_batch_size: 2
+	gradient_accumulation_steps: 1
+	prompt_template: <|start_header_id|>system<|end_header_id|>
+{}<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+Question: {}<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>
+{}<|eot_id|>
+
+------------------------  ---------------------------
+The token has not been saved to the git credentials helper. Pass `add_to_git_credential=True` in this function directly or `--add-to-git-credential` if using via `huggingface-cli` if you want to set the git credential as well.
+Token is valid (permission: write).
+Your token has been saved to /home/kunet.ae/ku5001069/.cache/huggingface/token
+Login successful
+[1;34mwandb[0m: 🚀 View run [33mft-Meta-Llama-3-8B-Instruct-240718164838-v0[0m at: [34mhttps://wandb.ai/my-ku-org/huggingface/runs/7uesmthw[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20240718_164902-7uesmthw/logs[0m

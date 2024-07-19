@@ -1,0 +1,74 @@
+Finally - out of queue
+Thu Jul 18 22:51:27 2024       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 515.105.01   Driver Version: 515.105.01   CUDA Version: 11.7     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  Tesla V100-PCIE...  Off  | 00000000:5A:00.0 Off |                    0 |
+| N/A   70C    P0   235W / 250W |  12761MiB / 32768MiB |    100%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+|   1  Tesla V100-PCIE...  Off  | 00000000:5E:00.0 Off |                    0 |
+| N/A   24C    P0    23W / 250W |      0MiB / 32768MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+|   2  Tesla V100-PCIE...  Off  | 00000000:62:00.0 Off |                    0 |
+| N/A   52C    P0    42W / 250W |  17135MiB / 32768MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+|   3  Tesla V100-PCIE...  Off  | 00000000:66:00.0 Off |                    0 |
+| N/A   57C    P0   220W / 250W |  17135MiB / 32768MiB |     83%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|    0   N/A  N/A   1115531      C   python                          12751MiB |
+|    2   N/A  N/A    709255      C   python                          17131MiB |
+|    3   N/A  N/A    710091      C   python                          17131MiB |
++-----------------------------------------------------------------------------+
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+------------------------ ft-medical.py ---------------------------
+------------------------  ---------------------------
+	output_dir: ./out
+	cache_dir: /dpc/kunf0097/l3-8b
+	train_data_path: ./data/medical.json
+	model_name: meta-llama/Meta-Llama-3-8B-Instruct
+	model_save_path: /dpc/kunf0097/l3-8b/model/meta-llama/Meta-Llama-3-8B-Instruct-v240718225134
+	run_id: 240718225134
+	chpt_dir: /dpc/kunf0097/l3-8b/chpt/240718225134
+	last_checkpoint: None
+	per_device_train_batch_size: 2
+	gradient_accumulation_steps: 1
+	prompt_template: <|start_header_id|>system<|end_header_id|>
+{}<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+Question: {}<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>
+{}<|eot_id|>
+
+------------------------  ---------------------------
+The token has not been saved to the git credentials helper. Pass `add_to_git_credential=True` in this function directly or `--add-to-git-credential` if using via `huggingface-cli` if you want to set the git credential as well.
+Token is valid (permission: write).
+Your token has been saved to /home/kunet.ae/ku5001069/.cache/huggingface/token
+Login successful
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:08<00:26,  8.94s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:18<00:18,  9.19s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:27<00:09,  9.25s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:29<00:00,  6.46s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:29<00:00,  7.45s/it]
+/home/kunet.ae/ku5001069/.local/lib/python3.10/site-packages/trl/trainer/sft_trainer.py:278: UserWarning: You didn't pass a `max_seq_length` argument to the SFTTrainer, this will default to 1024
+  warnings.warn(
+WARNING:accelerate.utils.other:Detected kernel version 4.18.0, which is below the recommended minimum of 5.5.0; this can cause the process to hang. It is recommended to upgrade the kernel to the minimum version or higher.
+wandb: Using wandb-core as the SDK backend. Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: amew0 (my-ku-org). Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.17.2
+wandb: Run data is saved locally in /home/kunet.ae/ku5001069/LLM/wandb/run-20240718_225221-hcz2ulag
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run ft-Meta-Llama-3-8B-Instruct-240718225134-v0
+wandb: ⭐️ View project at https://wandb.ai/my-ku-org/huggingface
+wandb: 🚀 View run at https://wandb.ai/my-ku-org/huggingface/runs/hcz2ulag
+  0%|          | 0/171249 [00:00<?, ?it/s]INFO:__main__:0: <|begin_of_text|><|start_header_id|>system<|end_header_id|> If you are a doctor, please answer the medical questions based on the patient's description.<|eot_id|><|start_header_id|>user<|end_header_id|> This is the question: I woke up this morning feeling the whole room is spinning when i was sitting down. I went to the bathroom walking unsteadily, as i tried to focus i feel nauseous. I try to vomit but it wont come out.. After taking panadol and sleep for few hours, i still feel the same.. By the way, if i lay down or sit down, my head do not spin, only when i want to move around then i feel the whole world is spinning.. And it is normal stomach discomfort at the same time? Earlier after i relieved myself, the spinning lessen so i am not sure whether its connected or coincidences.. Thank you doc!<|eot_id|><|start_header_id|>assistant<|end_header_id|> Hi, Thank you for posting your query. The most likely cause for your symptoms is benign paroxysmal positional vertigo (BPPV), a type of peripheral vertigo. In this condition, the most common symptom is dizziness or giddiness, which is made worse with movements. Accompanying nausea and vomiting are common. The condition is due to problem in the ear, and improves in a few days on own. Betahistine tablets would help relieve your symptoms. Doing vestibular rehabilitation or adaptation exercises would prevent the recurrence of these symptoms. An ENT evaluation would also help. I hope it helps. Best wishes
+slurmstepd: error: *** JOB 1165039 ON gpu-11-3 CANCELLED AT 2024-07-18T23:23:03 ***

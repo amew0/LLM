@@ -88,7 +88,6 @@ def main(
 
     inspectt(inspect.currentframe())
     logger = logging.getLogger(__name__)
-    coloredlogs.install(level="DEBUG", logger=logger)
 
     start = time()
     load_dotenv()

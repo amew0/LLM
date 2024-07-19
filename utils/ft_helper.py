@@ -47,9 +47,12 @@ def generate_and_tokenize_prompt(
             prompt_template = prompt_template.split(
                 "<|start_header_id|>assistant<|end_header_id|>"
             )[0]
-            tokenized_user_prompt = tokenize(
+            # user_prompt = data_point["prompt"].split(
+            #     "<|start_header_id|>assistant<|end_header_id|>"
+            # )[0]
+            tokenized_user_prompt = tokenizer(
                 prompt_template.format(data_point["instruction"], data_point["input"]),
-                tokenizer=tokenizer,
+                # user_prompt
             )
             user_prompt_len = len(tokenized_user_prompt["input_ids"])
             labels_prefix = torch.full((user_prompt_len,), -100)
@@ -59,6 +62,7 @@ def generate_and_tokenize_prompt(
                     torch.tensor(tokenized_full_prompt["labels"][user_prompt_len:]),
                 )
             )
+            tokenized_full_prompt["labels"] = tokenized_full_prompt["labels"].flatten()
 
     return tokenized_full_prompt
 
