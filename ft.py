@@ -1,9 +1,9 @@
 import gc
 import inspect
 import os
+import logging
 from datetime import datetime
 from time import time
-import yaml
 
 import fire
 import huggingface_hub
@@ -16,8 +16,6 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
-    TrainerCallback,
-    TrainingArguments,
 )
 from trl import SFTTrainer, SFTConfig
 
@@ -25,45 +23,49 @@ from peft import LoraConfig, PeftModel
 from utils.eval_helper import inspectt, logg
 from utils.ft_helper import (
     generate_and_tokenize_prompt,
+    get_start_index,
     reorder_dataset,
 )
-from torch.utils.data import DataLoader, SequentialSampler
-
-import coloredlogs
-
-import logging
-
-logging.basicConfig(level=logging.INFO)
-
+from torch.utils.data import SequentialSampler
 
 wandb.require("core")
 
 
 def main(
-    output_dir=f"./out",
-    cache_dir=f"/dpc/kunf0097/l3-8b",
-    train_data_path="./data/medical.json",
+    cache_dir: str = f"/dpc/kunf0097/l3-8b",
+    train_data_path: str = "./data/medical.json",  # meher146/medical_llama3_instruct_dataset
     model_name: str = "meta-llama/Meta-Llama-3-8B-Instruct",
     model_save_path: str = None,
-    run_id=datetime.now().strftime("%y%m%d%H%M%S"),
+    run_id: str = datetime.now().strftime("%y%m%d%H%M%S"),
     chpt_dir: str = None,
-    last_checkpoint=None,
-    per_device_train_batch_size=2,
-    gradient_accumulation_steps=1,
-    prompt_template=None
+    last_checkpoint: str = None,
+    per_device_train_batch_size: int = 4,
+    gradient_accumulation_steps: int = 4,
+    world_size: int = None,
+    local_rank: int = None,
 ):
     """
     Finetuning.
 
     Args:
-
+        cache_dir (str): Directory for caching models.
+        train_data_path (str): Path to training data.
+        model_name (str): Name of the model to fine-tune.
+        model_save_path (str): Path to save the fine-tuned model.
+        run_id (str): Unique identifier for the run.
+        chpt_dir (str): Directory for checkpoints.
+        last_checkpoint (str): Path to the last checkpoint.
+        per_device_train_batch_size (int): Batch size per device.
+        gradient_accumulation_steps (int): Steps for gradient accumulation.
+        world_size (int): Number of distributed processes.
+        local_rank (int): Local rank for distributed training.
     """
 
     if model_save_path is None:
         model_save_path = f"{cache_dir}/model/{model_name}-v{run_id}"
 
     if chpt_dir is None:
-        chpt_dir = f"{cache_dir}/chpt/{run_id}"
+        chpt_dir = f"{cache_dir}/chpt/{run_id}" 
 
     if os.path.isdir(chpt_dir):
         checkpoints = [d for d in os.listdir(chpt_dir) if d.startswith("checkpoint-")]
@@ -72,19 +74,25 @@ def main(
                 chpt_dir, max(checkpoints, key=lambda cp: int(cp.split("-")[-1]))
             )
 
+    # if train_data_path locally exists use it
+    if os.path.exists(train_data_path):
+        data = load_dataset("json", data_files=train_data_path, split="train")
+    else:
+        data = load_dataset(train_data_path, split="train")
+
     start_index = 0
     if last_checkpoint is not None:
-        start_index = (
-            int(last_checkpoint.split("-")[-1])
-            * per_device_train_batch_size
-            * gradient_accumulation_steps
-        )
+        start_index = get_start_index(last_checkpoint, len(data))
 
-    if prompt_template is None:
-        with open("tuning.yaml", "r") as f:
-            tuning_config = yaml.safe_load(f)
-            prompt_template = tuning_config[model_name]["prompt_template"]
+    # device_map = "auto"
+    device_map = {"": 0}
+    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
 
+    ddp = world_size != 1
+    if ddp:
+        device_map = {"": local_rank}
+        gradient_accumulation_steps = gradient_accumulation_steps // world_size
 
     inspectt(inspect.currentframe())
     logger = logging.getLogger(__name__)
@@ -110,8 +118,8 @@ def main(
         cache_dir=f"{cache_dir}/model",
         quantization_config=bnb_config,
         torch_dtype=torch.float16,
-        device_map="auto",
-        low_cpu_mem_usage=True,
+        device_map=device_map,
+        # low_cpu_mem_usage=True,
     )
 
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
@@ -130,18 +138,16 @@ def main(
     # most important hp to control CUDA OOM # send to args
     cutoff_len = 296  # (75% of the data wont be affected)
 
-    # Load and process dataset
-    # data = load_dataset("json", data_files=train_data_path, split="train")
-    data = load_dataset("meher146/medical_llama3_instruct_dataset", split="train")
+    # Process dataset
     if start_index != 0:
         data = reorder_dataset(data, start_index)
-    train_dataset = data.map(lambda x: generate_and_tokenize_prompt(x, tokenizer, cutoff_len, prompt_template))
+    train_dataset = data.map(lambda x: generate_and_tokenize_prompt(x, tokenizer, cutoff_len))
 
     # load it from .yaml
     train_args = SFTConfig(
         run_name=f"ft-{model_name.split('/')[1]}-{run_id}-v{start_index}",
         per_device_train_batch_size=per_device_train_batch_size,
-        gradient_accumulation_steps=gradient_accumulation_steps,  # only 1 is allowed on the no shuffler [needs revision]
+        gradient_accumulation_steps=gradient_accumulation_steps,
         eval_accumulation_steps=1,  # !very important to send data to cpu
         warmup_steps=1,
         num_train_epochs=3,
@@ -154,7 +160,7 @@ def main(
         dataloader_drop_last=False,
         save_steps=400,
         save_total_limit=3,
-        max_seq_length=cutoff_len,
+        max_seq_length=cutoff_len, # not sure its purpose since its setup on the tokenizer
         resume_from_checkpoint=last_checkpoint,
     )
 
@@ -167,6 +173,11 @@ def main(
 
         def _get_train_sampler(self):
             return SequentialSampler(self.train_dataset)  # to prevent shuffling
+
+        # ddnt try it yet
+        def save_state(self):
+            self.state.gradient_accumulation_steps = self.args.gradient_accumulation_steps
+            super().save_state()
 
     trainer = SFTTrainerNoShuffle(
         model=model,

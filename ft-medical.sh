@@ -1,17 +1,17 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --job-name=ft
+#SBATCH --job-name=ftt
 #SBATCH --time=2-00:00:00
 #SBATCH --partition=gpu
 #SBATCH --account=kunf0097
-#SBATCH --mem=30000MB
 #SBATCH --output=./out/%j.out
 #SBATCH --error=./out/%j.err
-# SBATCH --nodelist=gpu-10-2
+# SBATCH --nodelist=gpu-11-3
  
 module load miniconda/3
 conda activate torch20
 echo "Finally - out of queue" 
 nvidia-smi
-python ft.py
+
+# CUDA_DEVICE_COUNT=$(python -c "import torch; print(torch.cuda.device_count())")
+accelerate launch ft.py

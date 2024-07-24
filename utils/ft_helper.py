@@ -1,12 +1,39 @@
-import datasets
+import os
+import json
 from datasets import concatenate_datasets
 from transformers import TrainerCallback
-from transformers.trainer_utils import seed_worker
 import torch
-from torch.utils.data import DataLoader, SequentialSampler
-from trl import SFTTrainer
 
 from utils.eval_helper import logg
+
+
+def get_start_index(last_checkpoint, total_rows) -> int:
+    """
+    Get the start index to resume training from the last checkpoint.
+
+    Args:
+        last_checkpoint: str
+        total_rows: int
+    Returns:
+        start_index: int
+    """
+    with open(os.path.join(last_checkpoint, "trainer_state.json"), "r") as f:
+        trainer_state = json.load(f)
+    saved_per_device_train_batch_size = trainer_state["train_batch_size"]
+    saved_max_steps = trainer_state["max_steps"]
+    saved_num_train_epochs = trainer_state["num_train_epochs"]
+
+    # [TODO]: save it directly to directly access it
+    saved_gradient_accumulation_steps = round(
+        (total_rows * saved_num_train_epochs)
+        / (saved_max_steps * saved_per_device_train_batch_size)
+    )
+    start_index = (
+        int(last_checkpoint.split("-")[-1])
+        * saved_per_device_train_batch_size
+        * saved_gradient_accumulation_steps
+    )
+    return start_index
 
 
 def tokenize(prompt, tokenizer, cutoff_len: int = None):
@@ -24,45 +51,31 @@ def tokenize(prompt, tokenizer, cutoff_len: int = None):
     return result
 
 
-def generate_and_tokenize_prompt(
-    data_point, tokenizer, cutoff_len: int = None, prompt_template: str = None
-):
-    train_on_input = False
+def generate_and_tokenize_prompt(data_point, tokenizer, cutoff_len: int = None):
     if cutoff_len is None:
-        tokenized_full_prompt = tokenize(
-            prompt_template.format(
-                data_point["instruction"], data_point["input"], data_point["output"]
-            ),
-            tokenizer=tokenizer,
-        )
+        tokenized_full_prompt = tokenize(data_point["prompt"], tokenizer=tokenizer)
     else:
         tokenized_full_prompt = tokenize(
-            prompt_template.format(
-                data_point["instruction"], data_point["input"], data_point["output"]
-            ),
-            tokenizer=tokenizer,
-            cutoff_len=cutoff_len,
+            data_point["prompt"], tokenizer=tokenizer, cutoff_len=cutoff_len
         )
-        if not train_on_input:
-            prompt_template = prompt_template.split(
-                "<|start_header_id|>assistant<|end_header_id|>"
-            )[0]
-            # user_prompt = data_point["prompt"].split(
-            #     "<|start_header_id|>assistant<|end_header_id|>"
-            # )[0]
-            tokenized_user_prompt = tokenizer(
-                prompt_template.format(data_point["instruction"], data_point["input"]),
-                # user_prompt
+
+        user_prompt = data_point["prompt"].split(
+            "<|start_header_id|>assistant<|end_header_id|>"
+        )[0]
+        tokenized_user_prompt = tokenizer(
+            # prompt_template.format(data_point["instruction"], data_point["input"]),
+            user_prompt,
+            max_length=cutoff_len,
+            truncation=True,
+        )
+        user_prompt_len = len(tokenized_user_prompt["input_ids"])
+        labels_prefix = torch.full((user_prompt_len,), -100)
+        tokenized_full_prompt["labels"] = torch.cat(
+            (
+                labels_prefix,
+                torch.tensor(tokenized_full_prompt["labels"][user_prompt_len:]),
             )
-            user_prompt_len = len(tokenized_user_prompt["input_ids"])
-            labels_prefix = torch.full((user_prompt_len,), -100)
-            tokenized_full_prompt["labels"] = torch.cat(
-                (
-                    labels_prefix,
-                    torch.tensor(tokenized_full_prompt["labels"][user_prompt_len:]),
-                )
-            )
-            tokenized_full_prompt["labels"] = tokenized_full_prompt["labels"].flatten()
+        )
 
     return tokenized_full_prompt
 
