@@ -29,16 +29,20 @@ from utils.ft_helper import (
 from torch.utils.data import SequentialSampler
 
 wandb.require("core")
+from datasets.utils.logging import disable_progress_bar
+disable_progress_bar()
 
 
 def main(
     cache_dir: str = f"/dpc/kunf0097/l3-8b",
-    train_data_path: str = "./data/medical.json",  # meher146/medical_llama3_instruct_dataset
+    # train_data_path: str = "./data/medical.json",
+    train_data_path: str = "meher146/medical_llama3_instruct_dataset",
     model_name: str = "meta-llama/Meta-Llama-3-8B-Instruct",
     model_save_path: str = None,
     run_id: str = datetime.now().strftime("%y%m%d%H%M%S"),
     chpt_dir: str = None,
     last_checkpoint: str = None,
+    start_index: int = 0,
     per_device_train_batch_size: int = 4,
     gradient_accumulation_steps: int = 4,
     world_size: int = None,
@@ -55,6 +59,7 @@ def main(
         run_id (str): Unique identifier for the run.
         chpt_dir (str): Directory for checkpoints.
         last_checkpoint (str): Path to the last checkpoint.
+        start_index (int): Start index for the dataset.
         per_device_train_batch_size (int): Batch size per device.
         gradient_accumulation_steps (int): Steps for gradient accumulation.
         world_size (int): Number of distributed processes.
@@ -65,7 +70,7 @@ def main(
         model_save_path = f"{cache_dir}/model/{model_name}-v{run_id}"
 
     if chpt_dir is None:
-        chpt_dir = f"{cache_dir}/chpt/{run_id}" 
+        chpt_dir = f"{cache_dir}/chpt/{run_id}"
 
     if os.path.isdir(chpt_dir):
         checkpoints = [d for d in os.listdir(chpt_dir) if d.startswith("checkpoint-")]
@@ -80,7 +85,6 @@ def main(
     else:
         data = load_dataset(train_data_path, split="train")
 
-    start_index = 0
     if last_checkpoint is not None:
         start_index = get_start_index(last_checkpoint, len(data))
 
@@ -103,9 +107,6 @@ def main(
     huggingface_hub.login(token=HF_TOKEN_WRITE)
     torch.cuda.empty_cache()
 
-    # Initialize tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=f"{cache_dir}/tokenizer")
-
     # Initialize model
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
@@ -119,9 +120,9 @@ def main(
         quantization_config=bnb_config,
         torch_dtype=torch.float16,
         device_map=device_map,
-        # low_cpu_mem_usage=True,
     )
 
+    tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=f"{cache_dir}/tokenizer")
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
     model.resize_token_embeddings(len(tokenizer))
 
@@ -136,7 +137,7 @@ def main(
     )
 
     # most important hp to control CUDA OOM # send to args
-    cutoff_len = 296  # (75% of the data wont be affected)
+    cutoff_len = 248  # (75% of the data wont be affected)
 
     # Process dataset
     if start_index != 0:
@@ -149,11 +150,11 @@ def main(
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         eval_accumulation_steps=1,  # !very important to send data to cpu
-        warmup_steps=1,
+        warmup_ratio=0.1,
         num_train_epochs=3,
         learning_rate=3e-4,
         fp16=False,
-        logging_steps=1,
+        logging_steps=10,
         optim="adamw_torch",
         output_dir=f"{chpt_dir}",
         group_by_length=False,
@@ -182,6 +183,9 @@ def main(
     trainer = SFTTrainerNoShuffle(
         model=model,
         tokenizer=tokenizer,
+        data_collator=transformers.DataCollatorForSeq2Seq(
+            tokenizer, return_tensors="pt", padding=True
+        ),
         peft_config=peft_config,
         train_dataset=train_dataset,
         args=train_args,
@@ -198,30 +202,6 @@ def main(
 
     # Save model and tokenizer
     trainer.model.save_pretrained(model_save_path)
-
-    # saving to load later from https://www.youtube.com/watch?v=Pb_RGAl75VE&ab_channel=DataCamp
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        cache_dir=f"{cache_dir}/model",
-        torch_dtype=torch.float16,
-        device_map={"": 0},
-        return_dict=True,
-    )
-    model = PeftModel.from_pretrained(model, model_save_path)
-    model = model.merge_and_unload()  # revise it!!
-
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        cache_dir=f"{cache_dir}/tokenizer",
-        padding_side="right",
-        pad_token_id=(0),
-        legacy=False,
-    )
-    tokenizer.pad_token = tokenizer.eos_token
-
-    # Push to Hugging Face Hub
-    tokenizer.push_to_hub(f"{model_name}-v{run_id}", token=HF_TOKEN_WRITE)
-    model.push_to_hub(f"{model_name}-v{run_id}", token=HF_TOKEN_WRITE)
 
     # Log elapsed time
     end = time()

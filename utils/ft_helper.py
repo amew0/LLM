@@ -32,49 +32,50 @@ def get_start_index(last_checkpoint, total_rows) -> int:
         int(last_checkpoint.split("-")[-1])
         * saved_per_device_train_batch_size
         * saved_gradient_accumulation_steps
-    )
+    ) % total_rows
     return start_index
 
 
-def tokenize(prompt, tokenizer, cutoff_len: int = None):
+def tokenize(prompt, tokenizer, cutoff_len: int = None, add_eos_token=True):
     result = tokenizer(
         prompt,
         truncation=True,
         max_length=cutoff_len,
-        padding="max_length",
-        return_tensors="pt",
+        padding=False,
+        return_tensors=None,
     )
-    result["input_ids"] = result["input_ids"].flatten()
-    result["attention_mask"] = result["attention_mask"].flatten()
 
-    result["labels"] = result["input_ids"].clone()  # Clone input_ids for labels
+    # if truncated the last token is not eostoken so we need to add it
+    if (
+        result["input_ids"][-1] != tokenizer.eos_token_id
+        and len(result["input_ids"]) < cutoff_len
+        and add_eos_token
+    ):
+        # append or replace?
+        result["input_ids"].append(tokenizer.eos_token_id) 
+        result["attention_mask"].append(1)
+    result["labels"] = result["input_ids"].copy()
     return result
 
 
-def generate_and_tokenize_prompt(data_point, tokenizer, cutoff_len: int = None):
-    if cutoff_len is None:
-        tokenized_full_prompt = tokenize(data_point["prompt"], tokenizer=tokenizer)
-    else:
-        tokenized_full_prompt = tokenize(
-            data_point["prompt"], tokenizer=tokenizer, cutoff_len=cutoff_len
-        )
+def generate_and_tokenize_prompt(
+    data_point, tokenizer, cutoff_len: int = None, train_on_inputs=False
+):
+    full_prompt = data_point["prompt"]
 
-        user_prompt = data_point["prompt"].split(
-            "<|start_header_id|>assistant<|end_header_id|>"
-        )[0]
-        tokenized_user_prompt = tokenizer(
-            # prompt_template.format(data_point["instruction"], data_point["input"]),
-            user_prompt,
-            max_length=cutoff_len,
-            truncation=True,
-        )
+    tokenized_full_prompt = tokenize(full_prompt, tokenizer, cutoff_len)
+
+    if not train_on_inputs:
+
+        # user_prompt = prompt_template.format(data_point["instruction"], data_point["input"])
+        user_prompt = full_prompt.split("<|start_header_id|>assistant<|end_header_id|>")[0]
+
+        tokenized_user_prompt = tokenize(user_prompt, tokenizer, cutoff_len)
+
         user_prompt_len = len(tokenized_user_prompt["input_ids"])
-        labels_prefix = torch.full((user_prompt_len,), -100)
-        tokenized_full_prompt["labels"] = torch.cat(
-            (
-                labels_prefix,
-                torch.tensor(tokenized_full_prompt["labels"][user_prompt_len:]),
-            )
+        labels_prefix = [-100] * user_prompt_len
+        tokenized_full_prompt["labels"] = (
+            labels_prefix + tokenized_full_prompt["labels"][user_prompt_len:]
         )
 
     return tokenized_full_prompt
