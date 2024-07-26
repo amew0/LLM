@@ -163,6 +163,7 @@ def main(
         save_total_limit=3,
         max_seq_length=cutoff_len, # not sure its purpose since its setup on the tokenizer
         resume_from_checkpoint=last_checkpoint,
+        load_best_model_at_end=True, # experimental
     )
 
     class SFTTrainerNoShuffle(SFTTrainer):
