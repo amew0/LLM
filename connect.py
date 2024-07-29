@@ -44,6 +44,7 @@ ftmodel = PeftModel.from_pretrained(model, last_checkpoint)
 ftmodel.push_to_hub(
     f"{model_name.split('/')[1]}-v{run_id}_si{start_index}-ada", token=HF_TOKEN_WRITE
 )
+# gotta send the tokenizer as well
 
 ftmodel = ftmodel.merge_and_unload()  #
 

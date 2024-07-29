@@ -12,6 +12,7 @@ import transformers
 import wandb
 from datasets import load_dataset
 from dotenv import load_dotenv
+import yaml
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -20,25 +21,21 @@ from transformers import (
 from trl import SFTTrainer, SFTConfig
 
 from peft import LoraConfig, PeftModel
+from utils.eval_helper import inspectt, logg
 from utils.ft_helper import (
     generate_and_tokenize_prompt,
     get_start_index,
     reorder_dataset,
-    inspectt,
-    logg,
 )
 from torch.utils.data import SequentialSampler
-from torch.nn import CrossEntropyLoss
 
-wandb.require("core")
 from datasets.utils.logging import disable_progress_bar
-
 disable_progress_bar()
+wandb.require("core")
 
 
 def main(
     cache_dir: str = f"/dpc/kunf0097/l3-8b",
-    # train_data_path: str = "./data/medical.json",
     train_data_path: str = "meher146/medical_llama3_instruct_dataset",
     model_name: str = "meta-llama/Meta-Llama-3-8B-Instruct",
     model_save_path: str = None,
@@ -50,6 +47,7 @@ def main(
     gradient_accumulation_steps: int = 4,
     world_size: int = None,
     local_rank: int = None,
+    add_pad_token: bool = True,
 ):
     """
     Finetuning.
@@ -67,7 +65,14 @@ def main(
         gradient_accumulation_steps (int): Steps for gradient accumulation.
         world_size (int): Number of distributed processes.
         local_rank (int): Local rank for distributed training.
+        add_pad_token (bool): Whether to add padding token.
     """
+    load_dotenv()
+    logger = logging.getLogger(__name__)
+
+    HF_TOKEN_WRITE = os.getenv("HF_TOKEN_WRITE")
+    if HF_TOKEN_WRITE is not None:
+        huggingface_hub.login(token=HF_TOKEN_WRITE)
 
     if model_save_path is None:
         model_save_path = f"{cache_dir}/model/{model_name}-v{run_id}"
@@ -91,7 +96,6 @@ def main(
     if last_checkpoint is not None:
         start_index = get_start_index(last_checkpoint, len(data))
 
-    # device_map = "auto"
     device_map = {"": 0}
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
@@ -102,13 +106,11 @@ def main(
         gradient_accumulation_steps = gradient_accumulation_steps // world_size
 
     inspectt(inspect.currentframe())
-    logger = logging.getLogger(__name__)
 
-    start = time()
-    load_dotenv()
-    HF_TOKEN_WRITE = os.getenv("HF_TOKEN_WRITE")
-    huggingface_hub.login(token=HF_TOKEN_WRITE)
-    torch.cuda.empty_cache()
+    with open(f"tuning.yaml", "r") as f:
+        tuning_config = yaml.safe_load(f)
+        print(tuning_config[model_name])
+
 
     # Initialize model
     bnb_config = BitsAndBytesConfig(
@@ -126,54 +128,38 @@ def main(
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=f"{cache_dir}/tokenizer")
-    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-    model.resize_token_embeddings(len(tokenizer))
+    if add_pad_token:
+        tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+        model.resize_token_embeddings(len(tokenizer))
 
-    # Prepare model for LoRA training
-    peft_config = LoraConfig(
-        r=4,
-        lora_alpha=16,
-        target_modules=["q_proj", "o_proj", "k_proj", "v_proj", "gate_proj"],
-        lora_dropout=0.05,
-        bias="none",
-        task_type="CAUSAL_LM",
-    )
+    # Prepare LoRA
+    peft_args = tuning_config[model_name]["peft_args"]
+    peft_config = LoraConfig(**peft_args)
 
     # most important hp to control CUDA OOM # send to args
-    cutoff_len = 248  # (75% of the data wont be affected)
+    cutoff_len = 248  # (75% of the data wont be affected by 298)
 
-    # Process dataset
     if start_index != 0:
         data = reorder_dataset(data, start_index)
     train_dataset = data.map(lambda x: generate_and_tokenize_prompt(x, tokenizer, cutoff_len))
 
-    # load it from .yaml
-    train_args = SFTConfig(
+    training_args = tuning_config[model_name]["training_args"]
+    train_config = SFTConfig(
         run_name=f"ft-{model_name.split('/')[1]}-{run_id}-v{start_index}",
+        resume_from_checkpoint=last_checkpoint,
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
-        eval_accumulation_steps=1,  # !very important to send data to cpu
-        warmup_ratio=0.1,
-        num_train_epochs=3,
-        learning_rate=3e-4,
-        fp16=False,
-        logging_steps=10,
-        optim="adamw_torch",
         output_dir=f"{chpt_dir}",
-        group_by_length=False,
-        dataloader_drop_last=False,
-        save_steps=400,
-        save_total_limit=3,
-        max_seq_length=cutoff_len,  # not sure its purpose since its setup on the tokenizer
-        resume_from_checkpoint=last_checkpoint,
-        load_best_model_at_end=True,  # experimental
+        max_seq_length=cutoff_len, # not sure its purpose since its setup on the tokenizer
+        eval_accumulation_steps=1,  # !very important to send data to cpu
+        **training_args
     )
 
     class SFTTrainerNoShuffle(SFTTrainer):
         def training_step(self, model, inputs):
             if (self.state.global_step % self.args.save_steps) == 0:
                 inputs_decoded = tokenizer.decode(inputs["input_ids"][0])
-                logger.info(f"{self.state.global_step}: {inputs_decoded}")
+                logger.critical(f"{self.state.global_step}: {inputs_decoded}")
             return super().training_step(model, inputs)
 
         def _get_train_sampler(self):
@@ -192,25 +178,23 @@ def main(
         ),
         peft_config=peft_config,
         train_dataset=train_dataset,
-        args=train_args,
+        args=train_config,
     )
 
     # Train model
     gc.collect()
     gc.collect()
 
+    start = time()
     if last_checkpoint is not None:
+        logg("Resuming from checkpoint")
         trainer.train(last_checkpoint)
     else:
         trainer.train()
-
-    # Save model and tokenizer
-    trainer.model.save_pretrained(model_save_path)
-
-    # Log elapsed time
     end = time()
     logg(f"Elapsed time: {end - start}")
 
+    trainer.model.save_pretrained(model_save_path)
 
 if __name__ == "__main__":
     logg("ft-medical.py")

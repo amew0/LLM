@@ -1,0 +1,47 @@
+Finally - out of queue
+Wed Jul 24 16:53:15 2024       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 515.105.01   Driver Version: 515.105.01   CUDA Version: 11.7     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  Tesla V100-PCIE...  Off  | 00000000:3B:00.0 Off |                    0 |
+| N/A   32C    P0    24W / 250W |      4MiB / 32768MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+|   1  Tesla V100-PCIE...  Off  | 00000000:86:00.0 Off |                    0 |
+| N/A   72C    P0   235W / 250W |  17135MiB / 32768MiB |     83%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|    1   N/A  N/A   1444608      C   python                          17131MiB |
++-----------------------------------------------------------------------------+
+------------------------ ft-medical.py ---------------------------
+------------------------  ---------------------------
+	cache_dir: /dpc/kunf0097/l3-8b
+	train_data_path: ./data/medical-36-row.json
+	model_name: meta-llama/Meta-Llama-3-8B-Instruct
+	model_save_path: /dpc/kunf0097/l3-8b/model/meta-llama/Meta-Llama-3-8B-Instruct-v240724165321
+	run_id: 240724165321
+	chpt_dir: /dpc/kunf0097/l3-8b/chpt/240724165321
+	last_checkpoint: None
+	per_device_train_batch_size: 4
+	gradient_accumulation_steps: 4
+	world_size: 1
+	local_rank: 0
+------------------------  ---------------------------
+The token has not been saved to the git credentials helper. Pass `add_to_git_credential=True` in this function directly or `--add-to-git-credential` if using via `huggingface-cli` if you want to set the git credential as well.
+Token is valid (permission: write).
+Your token has been saved to /home/kunet.ae/ku5001069/.cache/huggingface/token
+Login successful
+{'train_runtime': 78.3176, 'train_samples_per_second': 1.379, 'train_steps_per_second': 0.077, 'train_loss': 2.8631057739257812, 'epoch': 2.67}
+------------------------ Elapsed time: 100.52356123924255 ---------------------------
+[1;34mwandb[0m: 🚀 View run [33mft-Meta-Llama-3-8B-Instruct-240724165321-v0[0m at: [34mhttps://wandb.ai/my-ku-org/huggingface/runs/oyj0wpqq[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20240724_165340-oyj0wpqq/logs[0m

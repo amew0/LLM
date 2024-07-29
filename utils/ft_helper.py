@@ -2,9 +2,17 @@ import os
 import json
 from datasets import concatenate_datasets
 from transformers import TrainerCallback
-import torch
+import inspect
 
-from utils.eval_helper import logg
+def logg(x):
+    print(f"------------------------ {x} ---------------------------")
+
+def inspectt(frame):
+    logg("")
+    args, _, _, values = inspect.getargvalues(frame)
+    for arg in args:
+        print(f"\t{arg}: {values[arg]}")
+    logg("")
 
 
 def get_start_index(last_checkpoint, total_rows) -> int:

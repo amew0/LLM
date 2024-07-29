@@ -1,0 +1,19 @@
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:05<00:15,  5.08s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:08<00:08,  4.34s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:12<00:04,  4.13s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:13<00:00,  2.90s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:13<00:00,  3.45s/it]
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+/home/kunet.ae/ku5001069/.local/lib/python3.10/site-packages/trl/trainer/sft_trainer.py:278: UserWarning: You didn't pass a `max_seq_length` argument to the SFTTrainer, this will default to 1024
+  warnings.warn(
+Detected kernel version 4.18.0, which is below the recommended minimum of 5.5.0; this can cause the process to hang. It is recommended to upgrade the kernel to the minimum version or higher.
+wandb: Using wandb-core as the SDK backend. Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: amew0 (my-ku-org). Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.17.2
+wandb: Run data is saved locally in /home/kunet.ae/ku5001069/LLM/wandb/run-20240724_165340-oyj0wpqq
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run ft-Meta-Llama-3-8B-Instruct-240724165321-v0
+wandb: ⭐️ View project at https://wandb.ai/my-ku-org/huggingface
+wandb: 🚀 View run at https://wandb.ai/my-ku-org/huggingface/runs/oyj0wpqq
+  0%|          | 0/6 [00:00<?, ?it/s] 17%|█▋        | 1/6 [00:12<01:02, 12.52s/it] 33%|███▎      | 2/6 [00:25<00:51, 12.88s/it] 50%|█████     | 3/6 [00:37<00:37, 12.59s/it] 67%|██████▋   | 4/6 [00:50<00:25, 12.79s/it] 83%|████████▎ | 5/6 [01:04<00:12, 12.91s/it]100%|██████████| 6/6 [01:16<00:00, 12.77s/it]                                             100%|██████████| 6/6 [01:16<00:00, 12.77s/it]100%|██████████| 6/6 [01:16<00:00, 12.77s/it]
+/home/kunet.ae/ku5001069/.local/lib/python3.10/site-packages/huggingface_hub/file_download.py:1132: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+/home/kunet.ae/ku5001069/.conda/envs/torch20/lib/python3.10/site-packages/peft/utils/save_and_load.py:209: UserWarning: Setting `save_embedding_layers` to `True` as the embedding layer has been resized during finetuning.
+  warnings.warn(
