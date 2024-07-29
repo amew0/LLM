@@ -43,6 +43,7 @@ def main(
     chpt_dir: str = None,
     last_checkpoint: str = None,
     start_index: int = 0,
+    cutoff_len: int = 298,
     per_device_train_batch_size: int = 4,
     gradient_accumulation_steps: int = 4,
     world_size: int = None,
@@ -61,6 +62,7 @@ def main(
         chpt_dir (str): Directory for checkpoints.
         last_checkpoint (str): Path to the last checkpoint.
         start_index (int): Start index for the dataset.
+        cutoff_len (int): Cutoff length for the dataset (For batching).
         per_device_train_batch_size (int): Batch size per device.
         gradient_accumulation_steps (int): Steps for gradient accumulation.
         world_size (int): Number of distributed processes.
@@ -108,8 +110,10 @@ def main(
     inspectt(inspect.currentframe())
 
     with open(f"tuning.yaml", "r") as f:
-        tuning_config = yaml.safe_load(f)
-        print(tuning_config[model_name])
+        ft_config = yaml.safe_load(f)[model_name]
+        assert "training_args" in ft_config, "Training arguments are not defined in tuning.yaml"
+        assert "peft_args" in ft_config, "Peft arguments are not defined in tuning.yaml"
+        print(ft_config)
 
 
     # Initialize model
@@ -122,28 +126,29 @@ def main(
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         cache_dir=f"{cache_dir}/model",
-        quantization_config=bnb_config,
+        # quantization_config=bnb_config,
         torch_dtype=torch.float16,
         device_map=device_map,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=f"{cache_dir}/tokenizer")
-    if add_pad_token:
+    if tokenizer.pad_token is None:
+        print("Tokenizer has no pad token. Adding it.")
         tokenizer.add_special_tokens({"pad_token": "[PAD]"})
         model.resize_token_embeddings(len(tokenizer))
 
     # Prepare LoRA
-    peft_args = tuning_config[model_name]["peft_args"]
+    peft_args = ft_config["peft_args"]
     peft_config = LoraConfig(**peft_args)
 
-    # most important hp to control CUDA OOM # send to args
-    cutoff_len = 248  # (75% of the data wont be affected by 298)
+    # cutoff_len most important hp to control CUDA OOM # send to args
+    # (75% of the data wont be affected by 298 - Q3)
 
     if start_index != 0:
         data = reorder_dataset(data, start_index)
     train_dataset = data.map(lambda x: generate_and_tokenize_prompt(x, tokenizer, cutoff_len))
 
-    training_args = tuning_config[model_name]["training_args"]
+    training_args = ft_config["training_args"]
     train_config = SFTConfig(
         run_name=f"ft-{model_name.split('/')[1]}-{run_id}-v{start_index}",
         resume_from_checkpoint=last_checkpoint,

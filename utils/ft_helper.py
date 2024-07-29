@@ -4,8 +4,10 @@ from datasets import concatenate_datasets
 from transformers import TrainerCallback
 import inspect
 
+
 def logg(x):
     print(f"------------------------ {x} ---------------------------")
+
 
 def inspectt(frame):
     logg("")
@@ -44,7 +46,54 @@ def get_start_index(last_checkpoint, total_rows) -> int:
     return start_index
 
 
-def tokenize(prompt, tokenizer, cutoff_len: int = None, add_eos_token=True):
+# [ARCHIVE]
+# def tokenize(prompt, tokenizer, cutoff_len: int = None, add_eos_token=True):
+#     result = tokenizer(
+#         prompt,
+#         truncation=True,
+#         max_length=cutoff_len,
+#         padding=False,
+#         return_tensors=None,
+#     )
+
+#     # if truncated the last token is not eostoken so we need to add it
+#     if (
+#         result["input_ids"][-1] != tokenizer.eos_token_id
+#         and len(result["input_ids"]) < cutoff_len
+#         and add_eos_token
+#     ):
+#         # append or replace?
+#         result["input_ids"].append(tokenizer.eos_token_id)
+#         result["attention_mask"].append(1)
+#     result["labels"] = result["input_ids"].copy()
+#     return result
+
+
+# def generate_and_tokenize_prompt(
+#     data_point, tokenizer, cutoff_len: int = None, train_on_inputs=False
+# ):
+#     full_prompt = data_point["prompt"]
+
+#     tokenized_full_prompt = tokenize(full_prompt, tokenizer, cutoff_len)
+
+#     if not train_on_inputs:
+
+#         # user_prompt = prompt_template.format(data_point["instruction"], data_point["input"])
+#         user_prompt = full_prompt.split("<|start_header_id|>assistant<|end_header_id|>")[0]
+
+#         tokenized_user_prompt = tokenize(user_prompt, tokenizer, cutoff_len)
+
+#         user_prompt_len = len(tokenized_user_prompt["input_ids"])
+#         labels_prefix = [-100] * user_prompt_len
+#         tokenized_full_prompt["labels"] = (
+#             labels_prefix + tokenized_full_prompt["labels"][user_prompt_len:]
+#         )
+
+#     return tokenized_full_prompt
+
+
+# [WIP]
+def tokenize(prompt, tokenizer, cutoff_len: int = None):
     result = tokenizer(
         prompt,
         truncation=True,
@@ -53,31 +102,20 @@ def tokenize(prompt, tokenizer, cutoff_len: int = None, add_eos_token=True):
         return_tensors=None,
     )
 
-    # if truncated the last token is not eostoken so we need to add it
-    if (
-        result["input_ids"][-1] != tokenizer.eos_token_id
-        and len(result["input_ids"]) < cutoff_len
-        and add_eos_token
-    ):
-        # append or replace?
-        result["input_ids"].append(tokenizer.eos_token_id) 
-        result["attention_mask"].append(1)
     result["labels"] = result["input_ids"].copy()
     return result
 
 
 def generate_and_tokenize_prompt(
-    data_point, tokenizer, cutoff_len: int = None, train_on_inputs=False
+    example, tokenizer, ft_config, cutoff_len: int = None, train_on_inputs=False
 ):
-    full_prompt = data_point["prompt"]
+    user_prompt = ft_config["prompt"].format(example["instruction"], example["input"])
+    response = ft_config["response"].format(example["output"])
+    full_prompt = user_prompt + response
 
     tokenized_full_prompt = tokenize(full_prompt, tokenizer, cutoff_len)
 
     if not train_on_inputs:
-
-        # user_prompt = prompt_template.format(data_point["instruction"], data_point["input"])
-        user_prompt = full_prompt.split("<|start_header_id|>assistant<|end_header_id|>")[0]
-
         tokenized_user_prompt = tokenize(user_prompt, tokenizer, cutoff_len)
 
         user_prompt_len = len(tokenized_user_prompt["input_ids"])
