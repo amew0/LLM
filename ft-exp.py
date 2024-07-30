@@ -1,3 +1,6 @@
+import socket
+print(socket.gethostname())
+
 import gc
 import inspect
 import os
@@ -37,7 +40,7 @@ wandb.require("core")
 def main(
     cache_dir: str = f"/dpc/kunf0097/l3-8b",
     train_data_path: str = "meher146/medical_llama3_instruct_dataset",
-    model_name: str = "meta-llama/Meta-Llama-3-8B-Instruct",
+    model_name: str = "EleutherAI/pythia-70m-deduped",
     model_save_path: str = None,
     run_id: str = datetime.now().strftime("%y%m%d%H%M%S"),
     chpt_dir: str = None,
@@ -48,7 +51,6 @@ def main(
     gradient_accumulation_steps: int = 4,
     world_size: int = None,
     local_rank: int = None,
-    add_pad_token: bool = True,
 ):
     """
     Finetuning.
@@ -67,7 +69,6 @@ def main(
         gradient_accumulation_steps (int): Steps for gradient accumulation.
         world_size (int): Number of distributed processes.
         local_rank (int): Local rank for distributed training.
-        add_pad_token (bool): Whether to add padding token.
     """
     load_dotenv()
     logger = logging.getLogger(__name__)
@@ -126,7 +127,7 @@ def main(
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         cache_dir=f"{cache_dir}/model",
-        # quantization_config=bnb_config,
+        quantization_config=bnb_config,
         torch_dtype=torch.float16,
         device_map=device_map,
     )
@@ -146,7 +147,7 @@ def main(
 
     if start_index != 0:
         data = reorder_dataset(data, start_index)
-    train_dataset = data.map(lambda x: generate_and_tokenize_prompt(x, tokenizer, cutoff_len))
+    train_dataset = data.map(lambda x: generate_and_tokenize_prompt(x, tokenizer, ft_config, cutoff_len))
 
     training_args = ft_config["training_args"]
     train_config = SFTConfig(
@@ -170,7 +171,7 @@ def main(
         def _get_train_sampler(self):
             return SequentialSampler(self.train_dataset)  # to prevent shuffling
 
-        # ddnt try it yet
+        # [Not saving to trainer_state]
         def save_state(self):
             self.state.gradient_accumulation_steps = self.args.gradient_accumulation_steps
             super().save_state()
