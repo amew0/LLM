@@ -27,6 +27,8 @@ def get_start_index(last_checkpoint, total_rows) -> int:
     Returns:
         start_index: int
     """
+    # a simpler and easier eq.n
+    # start_index = (total_rows * epoch) % total_rows
     with open(os.path.join(last_checkpoint, "trainer_state.json"), "r") as f:
         trainer_state = json.load(f)
     saved_per_device_train_batch_size = trainer_state["train_batch_size"]
@@ -157,3 +159,23 @@ class PrintExampleCallback(TrainerCallback):
         logg(
             f"Step {state.global_step}: {tokenizer.decode(example['input_ids'][0], skip_special_tokens=True)}"
         )
+
+
+# [Just in case]
+# def format_prompt(batch, ft_config):
+#     # not the best approach
+#     prompts = []
+#     for i in range(len(batch['instruction'])):
+#         example = {key: value[i] for key, value in batch.items()}
+
+#         user_prompt = ft_config["prompt"].format(example["instruction"], example["input"])
+#         response = ft_config["response"].format(example["output"])
+#         full_prompt = user_prompt + response
+#         prompts.append(full_prompt)
+
+#     return prompts
+
+# # def collate_fn(batch, ft_config, cutoff_len):
+# response_template = "\n### Assistant:"
+# from trl import DataCollatorForCompletionOnlyLM
+# collator = DataCollatorForCompletionOnlyLM(response_template, tokenizer=tokenizer)

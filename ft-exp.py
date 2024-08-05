@@ -1,4 +1,5 @@
 import socket
+
 print(socket.gethostname())
 
 import gc
@@ -18,6 +19,7 @@ from dotenv import load_dotenv
 import yaml
 from transformers import (
     AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
     AutoTokenizer,
     BitsAndBytesConfig,
 )
@@ -33,6 +35,7 @@ from utils.ft_helper import (
 from torch.utils.data import SequentialSampler
 
 from datasets.utils.logging import disable_progress_bar
+
 disable_progress_bar()
 wandb.require("core")
 
@@ -56,7 +59,7 @@ def main(
     Finetuning.
 
     Args:
-        cache_dir (str): Directory for caching models.
+        cache_dir (str): Directory for caching models/tokenizers/datasets.
         train_data_path (str): Path to training data.
         model_name (str): Name of the model to fine-tune.
         model_save_path (str): Path to save the fine-tuned model.
@@ -92,9 +95,18 @@ def main(
 
     # if train_data_path locally exists use it
     if os.path.exists(train_data_path):
-        data = load_dataset("json", data_files=train_data_path, split="train")
+        data = load_dataset(
+            "json",
+            data_files=train_data_path,
+            split="train",
+            cache_dir=f"{cache_dir}/datasets",
+        )
     else:
-        data = load_dataset(train_data_path, split="train")
+        data = load_dataset(
+            train_data_path,
+            split="train",
+            cache_dir=f"{cache_dir}/datasets",
+        )
 
     if last_checkpoint is not None:
         start_index = get_start_index(last_checkpoint, len(data))
@@ -112,10 +124,9 @@ def main(
 
     with open(f"tuning.yaml", "r") as f:
         ft_config = yaml.safe_load(f)[model_name]
-        assert "training_args" in ft_config, "Training arguments are not defined in tuning.yaml"
+        assert "training_args" in ft_config, "training_args aren't defined in tuning.yaml"
         assert "peft_args" in ft_config, "Peft arguments are not defined in tuning.yaml"
         print(ft_config)
-
 
     # Initialize model
     bnb_config = BitsAndBytesConfig(
@@ -124,11 +135,16 @@ def main(
         bnb_4bit_compute_dtype=torch.float16,
         bnb_4bit_use_double_quant=True,
     )
+    torch_dtype = torch.float16
+    if not torch.cuda.is_available():
+        bnb_config = None
+        device_map = "cpu"
+        torch_dtype = torch.float32
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         cache_dir=f"{cache_dir}/model",
         quantization_config=bnb_config,
-        torch_dtype=torch.float16,
+        torch_dtype=torch_dtype,
         device_map=device_map,
     )
 
@@ -147,7 +163,9 @@ def main(
 
     if start_index != 0:
         data = reorder_dataset(data, start_index)
-    train_dataset = data.map(lambda x: generate_and_tokenize_prompt(x, tokenizer, ft_config, cutoff_len))
+    train_dataset = data.map(
+        lambda x: generate_and_tokenize_prompt(x, tokenizer, ft_config, cutoff_len)
+    )
 
     training_args = ft_config["training_args"]
     train_config = SFTConfig(
@@ -156,25 +174,20 @@ def main(
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         output_dir=f"{chpt_dir}",
-        max_seq_length=cutoff_len, # not sure its purpose since its setup on the tokenizer
+        max_seq_length=cutoff_len,  # not sure its purpose since its setup on the tokenizer
         eval_accumulation_steps=1,  # !very important to send data to cpu
-        **training_args
+        **training_args,
     )
 
     class SFTTrainerNoShuffle(SFTTrainer):
         def training_step(self, model, inputs):
             if (self.state.global_step % self.args.save_steps) == 0:
                 inputs_decoded = tokenizer.decode(inputs["input_ids"][0])
-                logger.critical(f"{self.state.global_step}: {inputs_decoded}")
+                logger.critical(f"Step {self.state.global_step}\n{inputs_decoded}")
             return super().training_step(model, inputs)
 
         def _get_train_sampler(self):
             return SequentialSampler(self.train_dataset)  # to prevent shuffling
-
-        # [Not saving to trainer_state]
-        def save_state(self):
-            self.state.gradient_accumulation_steps = self.args.gradient_accumulation_steps
-            super().save_state()
 
     trainer = SFTTrainerNoShuffle(
         model=model,
@@ -187,6 +200,11 @@ def main(
         args=train_config,
     )
 
+    max_steps = (len(train_dataset) * trainer.args.num_train_epochs) / (
+        per_device_train_batch_size * gradient_accumulation_steps * world_size
+    )
+
+    logg(f"Total steps: {max_steps}")
     # Train model
     gc.collect()
     gc.collect()
@@ -201,6 +219,7 @@ def main(
     logg(f"Elapsed time: {end - start}")
 
     trainer.model.save_pretrained(model_save_path)
+
 
 if __name__ == "__main__":
     logg("ft-medical.py")
