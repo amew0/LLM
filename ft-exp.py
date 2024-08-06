@@ -19,9 +19,9 @@ from dotenv import load_dotenv
 import yaml
 from transformers import (
     AutoModelForCausalLM,
-    AutoModelForSeq2SeqLM,
     AutoTokenizer,
     BitsAndBytesConfig,
+    GenerationConfig,
 )
 from trl import SFTTrainer, SFTConfig
 
@@ -37,7 +37,7 @@ from torch.utils.data import SequentialSampler
 from datasets.utils.logging import disable_progress_bar
 
 disable_progress_bar()
-wandb.require("core")
+# wandb.require("core")
 
 
 def main(
@@ -124,8 +124,8 @@ def main(
 
     with open(f"tuning.yaml", "r") as f:
         ft_config = yaml.safe_load(f)[model_name]
-        assert "training_args" in ft_config, "training_args aren't defined in tuning.yaml"
-        assert "peft_args" in ft_config, "Peft arguments are not defined in tuning.yaml"
+        # assert "training_args" in ft_config, "training_args aren't defined in tuning.yaml"
+        # assert "peft_args" in ft_config, "Peft arguments are not defined in tuning.yaml"
         print(ft_config)
 
     # Initialize model
@@ -148,11 +148,18 @@ def main(
         device_map=device_map,
     )
 
+    generation_config = ft_config["generation_config"]
+    # better approach if dont have quick access to .generate
+    for key, value in generation_config.items():
+        setattr(model.generation_config, key, value)
+    print(model.generation_config)
+
     tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=f"{cache_dir}/tokenizer")
     if tokenizer.pad_token is None:
         print("Tokenizer has no pad token. Adding it.")
         tokenizer.add_special_tokens({"pad_token": "[PAD]"})
         model.resize_token_embeddings(len(tokenizer))
+    # import sys;sys.exit(0)
 
     # Prepare LoRA
     peft_args = ft_config["peft_args"]

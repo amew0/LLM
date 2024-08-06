@@ -53,6 +53,10 @@ EleutherAI/pythia-70m-deduped:
     dataloader_drop_last: False
     save_steps: 100
     save_total_limit: 3
+  generation_config:
+    max_new_tokens: 200
+    do_sample: True
+    top_p: 0.9
   
 facebook/opt-125m:
   prompt: |

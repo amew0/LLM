@@ -1,5 +1,7 @@
 import socket
 
+import transformers
+
 print(socket.gethostname())
 
 import inspect
@@ -19,6 +21,7 @@ from transformers import (
 
 from peft import PeftModel
 from utils.eval_helper import inspectt, logg
+
 
 def tokenize(instruction, inp, ft_config, tokenizer, verbose=True):
     user_prompt = ft_config["prompt"].format(instruction, inp)
@@ -79,7 +82,25 @@ def main(
         model = model.merge_and_unload()
         print("Adapter connected!")
 
-    generation_config = {"max_new_tokens": 200}
+    generation_config = {
+        "max_new_tokens": 100,
+        "do_sample": True,
+        # "temperature": 0,
+        "top_p": 0.95,
+    }
+
+    # better approach if dont have quick access to .generate
+    for key, value in generation_config.items():
+        setattr(model.generation_config, key, value)
+    print(model.generation_config)
+    # prompts = [
+    #     "Hello, my name is",
+    #     "The president of the United States is",
+    #     "The capital of France is",
+    #     "The future of AI is",
+    # ]
+
+    # for inp in prompts:
 
     instruction = input("Instruction: ")
     while True:
@@ -89,9 +110,15 @@ def main(
         if inp == "<-":
             instruction = input("Instruction: ")
             continue
+        if inp == "debug":
+            import ipdb
 
-        example = tokenize(instruction, inp, ft_config, tokenizer).to(model.device)
-        # example = tokenizer(inp, return_tensors="pt").to(model.device)
+            ipdb.set_trace()
+            print("debugging")
+            continue
+
+        # example = tokenize(instruction, inp, ft_config, tokenizer).to(model.device)
+        example = tokenizer(inp, return_tensors="pt").to(model.device)
         output = model.generate(**example, **generation_config)
         response = tokenizer.decode(
             output[0][len(example["input_ids"][0]) :], skip_special_tokens=False
