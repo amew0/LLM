@@ -55,9 +55,10 @@ def main(
     inspectt(inspect.currentframe())
 
     with open(f"tuning.yaml", "r") as f:
-        ft_config = yaml.safe_load(f)[model_name]
-        assert "prompt" in ft_config, "Prompt template is not defined in tuning.yaml"
-        print(ft_config)
+        # ft_config = yaml.safe_load(f)[model_name]
+        # assert "prompt" in ft_config, "Prompt template is not defined in tuning.yaml"
+        # print(ft_config)
+        pass
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
@@ -83,7 +84,7 @@ def main(
         print("Adapter connected!")
 
     generation_config = {
-        "max_new_tokens": 100,
+        "max_new_tokens": 200,
         "do_sample": True,
         # "temperature": 0,
         "top_p": 0.95,

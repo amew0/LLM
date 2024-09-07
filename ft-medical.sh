@@ -1,7 +1,7 @@
 #!/bin/bash
 # SBATCH --nodes=1
 #SBATCH --job-name=ftt
-#SBATCH --time=1-00:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --partition=gpu
 #SBATCH --account=kunf0097
 #SBATCH --output=./out/%j.out
@@ -12,7 +12,7 @@
 # SBATCH --exclusive
 # SBATCH --mem=60000 
 module load miniconda/3
-conda activate torch20
+conda activate llm201
 echo "Finally - out of queue" 
 nvidia-smi
 

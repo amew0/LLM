@@ -1,0 +1,58 @@
+Finally - out of queue
+Wed Aug  7 16:53:14 2024       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 515.105.01   Driver Version: 515.105.01   CUDA Version: 11.7     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  Tesla V100-PCIE...  Off  | 00000000:3B:00.0 Off |                    0 |
+| N/A   59C    P0    80W / 250W |  13009MiB / 32768MiB |     37%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+|   1  Tesla V100-PCIE...  Off  | 00000000:86:00.0 Off |                    0 |
+| N/A   57C    P0   202W / 250W |  13009MiB / 32768MiB |     88%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|    0   N/A  N/A   3804020      C   python                          13005MiB |
+|    1   N/A  N/A   3804019      C   python                          13005MiB |
++-----------------------------------------------------------------------------+
+gpu-10-4
+------------------------ ft-medical.py ---------------------------
+The token has not been saved to the git credentials helper. Pass `add_to_git_credential=True` in this function directly or `--add-to-git-credential` if using via `huggingface-cli` if you want to set the git credential as well.
+Token is valid (permission: write).
+Your token has been saved to /home/kunet.ae/ku5001069/.cache/huggingface/token
+Login successful
+------------------------  ---------------------------
+	cache_dir: /dpc/kunf0097/l3-8b
+	train_data_path: meher146/medical_llama3_instruct_dataset
+	model_name: EleutherAI/pythia-70m-deduped
+	model_save_path: /dpc/kunf0097/l3-8b/model/EleutherAI/pythia-70m-deduped-v240807165319
+	run_id: 240807165319
+	chpt_dir: /dpc/kunf0097/l3-8b/chpt/240807165319
+	last_checkpoint: None
+	start_index: 0
+	cutoff_len: 298
+	per_device_train_batch_size: 4
+	gradient_accumulation_steps: 4
+	world_size: 1
+	local_rank: 0
+------------------------  ---------------------------
+{'prompt': '### System:\n{}<|endoftext|>\n### User:\n{}<|endoftext|>\n### Assistant:\n', 'response': '{}<|endoftext|>\n', 'peft_args': {'r': 4, 'lora_alpha': 16, 'target_modules': ['dense', 'dense_4h_to_h', 'dense_h_to_4h', 'query_key_value'], 'lora_dropout': 0.05, 'bias': 'none', 'task_type': 'CAUSAL_LM'}, 'training_args': {'warmup_ratio': 0.1, 'num_train_epochs': 10, 'learning_rate': 0.0003, 'fp16': False, 'logging_steps': 1, 'optim': 'adamw_torch', 'group_by_length': False, 'dataloader_drop_last': False, 'save_steps': 100, 'save_total_limit': 3}, 'generation_config': {'max_new_tokens': 200, 'do_sample': True, 'top_p': 0.9}}
+GenerationConfig {
+  "bos_token_id": 0,
+  "do_sample": true,
+  "eos_token_id": 0,
+  "max_new_tokens": 200,
+  "top_p": 0.9
+}
+
+Tokenizer has no pad token. Adding it.
+------------------------ Total steps: 71353.125 ---------------------------

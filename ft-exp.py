@@ -37,7 +37,7 @@ from torch.utils.data import SequentialSampler
 from datasets.utils.logging import disable_progress_bar
 
 disable_progress_bar()
-# wandb.require("core")
+wandb.require("core")
 
 
 def main(
@@ -49,7 +49,7 @@ def main(
     chpt_dir: str = None,
     last_checkpoint: str = None,
     start_index: int = 0,
-    cutoff_len: int = 298,
+    cutoff_len: int = 512,
     per_device_train_batch_size: int = 4,
     gradient_accumulation_steps: int = 4,
     world_size: int = None,
@@ -64,7 +64,7 @@ def main(
         model_name (str): Name of the model to fine-tune.
         model_save_path (str): Path to save the fine-tuned model.
         run_id (str): Unique identifier for the run.
-        chpt_dir (str): Directory for checkpoints.
+        chpt_dir (str): Directory for checkpoints. Most important hp to control CUDA OOM
         last_checkpoint (str): Path to the last checkpoint.
         start_index (int): Start index for the dataset.
         cutoff_len (int): Cutoff length for the dataset (For batching).
@@ -124,8 +124,6 @@ def main(
 
     with open(f"tuning.yaml", "r") as f:
         ft_config = yaml.safe_load(f)[model_name]
-        # assert "training_args" in ft_config, "training_args aren't defined in tuning.yaml"
-        # assert "peft_args" in ft_config, "Peft arguments are not defined in tuning.yaml"
         print(ft_config)
 
     # Initialize model
@@ -157,22 +155,15 @@ def main(
     tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=f"{cache_dir}/tokenizer")
     if tokenizer.pad_token is None:
         print("Tokenizer has no pad token. Adding it.")
-        tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+        tokenizer.add_special_tokens({"pad_token": "<|pad|>"})
         model.resize_token_embeddings(len(tokenizer))
-    # import sys;sys.exit(0)
 
     # Prepare LoRA
     peft_args = ft_config["peft_args"]
     peft_config = LoraConfig(**peft_args)
 
-    # cutoff_len most important hp to control CUDA OOM # send to args
-    # (75% of the data wont be affected by 298 - Q3)
-
     if start_index != 0:
         data = reorder_dataset(data, start_index)
-    train_dataset = data.map(
-        lambda x: generate_and_tokenize_prompt(x, tokenizer, ft_config, cutoff_len)
-    )
 
     training_args = ft_config["training_args"]
     train_config = SFTConfig(
@@ -181,7 +172,7 @@ def main(
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         output_dir=f"{chpt_dir}",
-        max_seq_length=cutoff_len,  # not sure its purpose since its setup on the tokenizer
+        max_seq_length=cutoff_len,  # tobe used for under the hood for truncation/padding
         eval_accumulation_steps=1,  # !very important to send data to cpu
         **training_args,
     )
@@ -190,24 +181,36 @@ def main(
         def training_step(self, model, inputs):
             if (self.state.global_step % self.args.save_steps) == 0:
                 inputs_decoded = tokenizer.decode(inputs["input_ids"][0])
-                logger.critical(f"Step {self.state.global_step}\n{inputs_decoded}")
+                print(f"Step {self.state.global_step}: {inputs_decoded!r}")
             return super().training_step(model, inputs)
 
         def _get_train_sampler(self):
             return SequentialSampler(self.train_dataset)  # to prevent shuffling
 
+    def formatting_prompts_func(example):
+        output_texts = []
+        for i in range(len(example['instruction'])):
+            user_prompt = ft_config["prompt"].format(example["instruction"][i], example["input"][i])
+            response = ft_config["response"].format(example["output"][i])
+            full_prompt = (user_prompt + response).strip()
+            output_texts.append(full_prompt)
+        return output_texts
+
+    from trl import DataCollatorForCompletionOnlyLM
+    response_template = "### Assistant:"
+    collator = DataCollatorForCompletionOnlyLM(response_template, tokenizer=tokenizer)
+    
     trainer = SFTTrainerNoShuffle(
         model=model,
         tokenizer=tokenizer,
-        data_collator=transformers.DataCollatorForSeq2Seq(
-            tokenizer, return_tensors="pt", padding=True
-        ),
+        formatting_func=formatting_prompts_func,
+        data_collator=collator,
         peft_config=peft_config,
-        train_dataset=train_dataset,
+        train_dataset=data,
         args=train_config,
     )
 
-    max_steps = (len(train_dataset) * trainer.args.num_train_epochs) / (
+    max_steps = (len(data) * trainer.args.num_train_epochs) / (
         per_device_train_batch_size * gradient_accumulation_steps * world_size
     )
 
