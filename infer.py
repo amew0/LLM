@@ -2,6 +2,8 @@ import socket
 
 import transformers
 
+from utils.ft_helper import inspectt, logg
+
 print(socket.gethostname())
 
 import inspect
@@ -20,7 +22,6 @@ from transformers import (
 )
 
 from peft import PeftModel
-from utils.eval_helper import inspectt, logg
 
 
 def tokenize(instruction, inp, ft_config, tokenizer, verbose=True):
